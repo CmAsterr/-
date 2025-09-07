@@ -94,9 +94,21 @@
 
 ---
 
+---
+
 ## 雨课堂检测软件使用教程
 
-把以上全部配置好之后，打开  `yuketang_monitor.exe`
+- 命令行界面版
+
+  在项目根目录运行 `cmd` 命令 `python main_cmd_yuketang_monitor.py`，操作很简单输数字就行
+
+- UI 界面版（基于 pyqt6）
+
+  在项目根目录运行 `cmd` 命令 `python main_pyqt6_yuketang_monitor.py`，操作见下
+
+---
+
+把以上全部配置好之后，运行 `python main_pyqt6_yuketang_monitor.py` 或直接打开  `yuketang_monitor.exe`
 
 - 在【课程管理】选项卡中可 新建、打开、删除课程
 
