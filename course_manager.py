@@ -4,10 +4,19 @@ import json
 import shutil
 from datetime import datetime
 import utils  # 导入通用工具模块
+import sys  # 需导入sys模块
 
 def get_courses_directory():
-    """获取课程存储根目录"""
-    courses_dir = os.path.join(os.path.dirname(__file__), "courses")
+    """获取课程存储根目录（适配打包后环境）"""
+    # 判断是否为打包后的环境（_MEIPASS是pyinstaller的临时目录标识）
+    if getattr(sys, 'frozen', False):
+        # 打包后：获取.exe所在目录
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        # 未打包：使用原逻辑（脚本所在目录）
+        base_dir = os.path.dirname(__file__)
+    
+    courses_dir = os.path.join(base_dir, "courses")
     if not os.path.exists(courses_dir):
         os.makedirs(courses_dir)
     return courses_dir
