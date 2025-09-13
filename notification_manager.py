@@ -5,7 +5,8 @@ import base64
 import hashlib
 from datetime import datetime
 from plyer import notification
-import utils  # 导入通用工具模块
+import utils  # 导入通用通用工具模块
+import threading  # 新增：导入线程模块
 
 def send_system_notification(title, message):
     """发送系统通知（Windows/macOS/Linux）"""
@@ -128,33 +129,53 @@ def send_wechat_notification(webhook_url, title, content, image_path=None, is_ai
     # 构建AI相关消息前缀
     ai_prefix = "[AI内容] " if is_ai else ""
     
-    # 先发送文本消息（添加AI标识）
-    text_success = send_wechat_text(
-        webhook_url, 
-        f"{ai_prefix}{title}", 
-        content
+    # 启动线程发送文本消息（添加AI标识）
+    text_thread = threading.Thread(
+        target=send_wechat_text,
+        args=(webhook_url, f"{ai_prefix}{title}", content)
     )
+    text_thread.start()
     
-    # 发送图片（如果有）
+    # 启动线程发送图片（如果有）
     image_success = True
     if image_path and os.path.exists(image_path):
-        image_success = send_wechat_image(webhook_url, image_path)
-        
+        image_thread = threading.Thread(
+            target=send_wechat_image,
+            args=(webhook_url, image_path)
+        )
+        image_thread.start()
+        # 等待图片线程完成并获取结果
+        image_thread.join()
+        image_success = image_thread.is_alive() is False  # 检查线程是否正常结束
+    
+    # 等待文本线程完成并获取结果
+    text_thread.join()
+    text_success = text_thread.is_alive() is False
+    
     return text_success and image_success
 
 def send_ai_notification(webhook_url, title, content, image_path=None):
     """专门用于发送AI相关内容的通知（系统通知+微信通知）"""
-    # 发送系统通知（添加AI标识）
-    full_title = f"AI内容 | {title}"
-    send_system_notification(full_title, content)
+    # 启动线程发送系统通知（添加AI标识）
+    system_thread = threading.Thread(
+        target=send_system_notification,
+        args=(f"AI内容 | {title}", content)
+    )
+    system_thread.start()
     
-    # 发送企业微信通知（标记为AI内容）
+    # 启动线程发送企业微信通知（标记为AI内容）
+    wechat_success = True
     if webhook_url:
-        return send_wechat_notification(
-            webhook_url,
-            title,
-            content,
-            image_path,
-            is_ai=True
+        wechat_thread = threading.Thread(
+            target=send_wechat_notification,
+            args=(webhook_url, title, content, image_path, True)
         )
-    return True
+        wechat_thread.start()
+        wechat_thread.join()
+        wechat_success = wechat_thread.is_alive() is False
+    
+    # 等待系统通知线程完成
+    system_thread.join()
+    system_success = system_thread.is_alive() is False
+    
+    return system_success and wechat_success
