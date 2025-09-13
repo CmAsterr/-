@@ -353,8 +353,9 @@ class MonitorThread(QThread):
                         # 5. 发送通知（系统通知+微信通知）
                         if self.user_config['page_settings'][page_type]['notify']:
                             # 发送系统通知
+                            
                             notification_manager.send_system_notification(
-                                title=f"新{self.page_name_map[page_type]}页面",
+                                title=f"新{page_type}页面",
                                 message=f"编号: {page_number}\n时间: {cycle_time}\n课程URL: {self.course_url}"
                             )
                             
@@ -366,10 +367,9 @@ class MonitorThread(QThread):
                                     content=f"页面编号：{page_number}\n课程URL：{self.course_url}",
                                     image_path=image_path
                                 )
-                        
-                        # 6. AI分析（与命令行异步处理一致）
+                        # 6. 用 ai 解答
                         if self.user_config['ai']['enable'] and image_path:
-                            def ai_process():
+                            def ai_process_and_notify():
                                 ai_answer = ai_manager.get_ai_answer(
                                     ocr_config=self.user_config['ocr'],
                                     ai_config=self.user_config['ai'],
@@ -377,17 +377,16 @@ class MonitorThread(QThread):
                                 )
                                 
                                 if self.wechat_hook and ai_answer:
-                                    notification_manager.send_wechat_notification(
+                                    notification_manager.send_ai_notification(
                                         webhook_url=self.wechat_hook,
                                         title=f"新{self.page_name_map[page_type]}页面分析",
                                         content=ai_answer,
-                                        is_ai=True
-                                    )
+                                        )
                                 self.log_signal.emit(f"AI分析完成: {ai_answer[:100]}..." if ai_answer else "AI分析未获取到结果")
                             
-                            ai_thread = threading.Thread(target=ai_process)
-                            ai_thread.daemon = True
-                            ai_thread.start()
+                            ai_thread = threading.Thread(target=ai_process_and_notify)
+                            ai_thread.daemon = True  # 设为守护线程，主程序退出时自动关闭
+                            ai_thread.start()  # 启动线程（异步执行，不阻塞主循环）
                     
                     elif is_monitored_page and not is_new_page:
                         # 快速模式超时判断（恢复常规间隔）
